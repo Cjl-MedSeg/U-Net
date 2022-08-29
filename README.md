@@ -87,7 +87,7 @@ c) 结合了下采样时的低分辨率信息（提供物体类别识别依据�
     <div style="color:orange;
     display: inline-block;
     color: #999;
-    padding: 2px;">图2 训练集样本及其对应标签</div>
+    <center> padding: 2px;">图2 训练集样本及其对应标签</div> </center> 
 </center>
 
 #### 2.2 数据集创建
