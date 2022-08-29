@@ -283,9 +283,7 @@ class UNet(nn.Cell):
 为了能够更加全面和直观的观察网络模型训练效果，本案例实现中还使用了MindSpore框架来自定义Metrics，在自定义的metrics类中使用了多种评价函数来评估模型的好坏，分别为准确率Acc、交并比IoU、Dice系数、灵敏度Sens、特异性Spec。
 
 a) 其中准确率Acc是图像中正确分类的像素百分比。即分类正确的像素占总像素的比例，用公式可表示为：
-$$
-Acc=\frac{TP+TN}{T P+TN+FP+FN}
-$$
+$$ Acc=\frac{TP+TN}{TP+TN+FP+FN} $$
 其中：
 
 - TP：真阳性数，在label中为阳性，在预测值中也为阳性的个数。
