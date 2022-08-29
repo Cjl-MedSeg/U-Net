@@ -292,17 +292,17 @@ $$ Acc=\frac{TP+TN}{TP+TN+FP+FN} $$
 - FN：假阴性数，在label中为阳性，在预测值中为阴性的个数。
 
 b) 交并比IoU是预测分割和标签之间的重叠区域除以预测分割和标签之间的联合区域（两者的交集/两者的并集），是语义分割中最常用的指标之一，其计算公式为：
-$
-IoU=\frac{|A\capB|}{|A\cupB|}=\frac{TP}{TP+FP+FN}
-$
+$$
+\text {IoU}=\frac{|A\capB|}{|A\cupB|}=\frac{TP}{TP+FP+FN}
+$$
 c) Dice系数定义为两倍的交集除以像素和，也叫F1score，与IoU呈正相关关系，其计算公式为：
-$
-\text {Dice }=\frac{2|A\capB|}{|A|+|B|}=\frac{2TP}{2TP+FP+FN}
-$
+$$
+\text {Dice}=\frac{2|A\capB|}{|A|+|B|}=\frac{2TP}{2TP+FP+FN}
+$$
 d) 敏感度Sens和特异性Spec分别是描述识别出的阳性占所有阳性的比例，以及描述识别出的负例占所有负例的比例，计算公式分别为：
-$
+$$
 \text {Sens}=\frac{TP}{TP+FN}
-$
+$$
 
 $$
 \text {Spec}=\frac{TN}{FP+TN}
