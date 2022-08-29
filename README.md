@@ -284,7 +284,7 @@ class UNet(nn.Cell):
 
 a) 其中准确率Acc是图像中正确分类的像素百分比。即分类正确的像素占总像素的比例，用公式可表示为：
 $$
-A c c=\frac{T P+T N}{T P+T N+F P+F N}
+Acc=\frac{TP+TN}{T P+TN+FP+FN}
 $$
 其中：
 
@@ -295,19 +295,19 @@ $$
 
 b) 交并比IoU是预测分割和标签之间的重叠区域除以预测分割和标签之间的联合区域（两者的交集/两者的并集），是语义分割中最常用的指标之一，其计算公式为：
 $$
-I o U=\frac{|A \cap B|}{|A \cup B|}=\frac{T P}{T P+F P+F N}
+IoU=\frac{|A\capB|}{|A\cupB|}=\frac{TP}{TP+FP+FN}
 $$
-c) Dice系数定义为两倍的交集除以像素和，也叫F1 score，与IoU呈正相关关系，其计算公式为：
+c) Dice系数定义为两倍的交集除以像素和，也叫F1score，与IoU呈正相关关系，其计算公式为：
 $$
-\text { Dice }=\frac{2|A \cap B|}{|A|+|B|}=\frac{2 T P}{2 T P+F P+F N}
+\text {Dice }=\frac{2|A\capB|}{|A|+|B|}=\frac{2TP}{2TP+FP+FN}
 $$
 d) 敏感度Sens和特异性Spec分别是描述识别出的阳性占所有阳性的比例，以及描述识别出的负例占所有负例的比例，计算公式分别为：
 $$
-\text { Sens }=\frac{T P}{T P+F N}
+\text {Sens}=\frac{TP}{TP+FN}
 $$
 
 $$
-\text { Spec }=\frac{T N}{F P+T N}
+\text {Spec}=\frac{TN}{FP+TN}
 $$
 
 具体的实现方法首先是自定义metrics_类，并按照MindSpore官方文档继承nn.Metric父类，接着根据上述5个评价指标的计算公式，在类中定义5个指标的计算方法，之后通过重新实现clear方法来初始化相关参数；重新实现update方法来传入模型预测值和标签，通过上述定义的各评价指标计算方法，计算每个指标的值并存入一个列表；最后通过重新实现eval方法来讲存储各评估指标值的列表返回。上述流程对应的代码如下：
