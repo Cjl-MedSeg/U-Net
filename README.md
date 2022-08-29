@@ -41,7 +41,7 @@ c) 结合了下采样时的低分辨率信息（提供物体类别识别依据�
 
 本案例基于MindSpore-CPU版本实现，在CPU上完成模型训练。
 
-案例实现所使用的数据即ISBI果蝇电镜图数据集，可以从http://brainiac2.mit.edu/isbi_challenge/中下载，下载好的数据集包括3个tif文件，分别对应测试集样本、训练集标签、训练集样本，文件路径结构如下：
+案例实现所使用的数据即ISBI果蝇电镜图数据集，可以从 http://brainiac2.mit.edu/isbi_challenge/ 中下载，下载好的数据集包括3个tif文件，分别对应测试集样本、训练集标签、训练集样本，文件路径结构如下：
 
 ```
 .datasets/
