@@ -587,7 +587,7 @@ cbs = [time_cb, loss_cb, eval_cb_train, eval_cb_val]
 
 model.train(epochs, train_dataset, callbacks=cbs)
 ```
-
+表1. 实验结果
 |                | Acc  | IoU  | Dice | Sens | Spec |
 | :------------: | :--: | :--: | :--: | ---: | ---- |
 |   Train set    | 0.90 | 0.88 | 0.94 | 0.94 | 0.76 |
