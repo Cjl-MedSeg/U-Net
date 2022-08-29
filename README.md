@@ -296,7 +296,7 @@ $$ Acc=\frac{TP+TN}{TP+TN+FP+FN} $$
 b) 交并比IoU是预测分割和标签之间的重叠区域除以预测分割和标签之间的联合区域（两者的交集/两者的并集），是语义分割中最常用的指标之一，其计算公式为：
 
 $$
-\text {IoU}=\frac{|A\capB|}{|A\cupB|}=\frac{TP}{TP+FP+FN}
+\text {IoU}=\frac{|A\cap B|}{|A\cup B|}=\frac{TP}{TP+FP+FN}
 $$
 
 c) Dice系数定义为两倍的交集除以像素和，也叫F1score，与IoU呈正相关关系，其计算公式为：
