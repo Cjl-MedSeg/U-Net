@@ -18,7 +18,6 @@ Unet模型的整体结构由两部分组成，即特征提取网络和特征融�
     <center> padding: 2px;">图1 Unet网络结构图</div> </center> 
 </center>
 
-<center>图1 Unet网络结构图</center>
 
 整个模型结构就是在原始图像输入后，首先进行特征提取，再进行特征融合：
 
