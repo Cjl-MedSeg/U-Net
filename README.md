@@ -15,8 +15,9 @@ Unet模型的整体结构由两部分组成，即特征提取网络和特征融�
     <div style="color:orange;
     display: inline-block;
     color: #999;
-    padding: 2px;">图1 Unet网络结构图</div>
+    <center> padding: 2px;">图1 Unet网络结构图</div> </center> 
 </center>
+
 
 整个模型结构就是在原始图像输入后，首先进行特征提取，再进行特征融合：
 
@@ -40,7 +41,7 @@ c) 结合了下采样时的低分辨率信息（提供物体类别识别依据�
 
 本案例基于MindSpore-CPU版本实现，在CPU上完成模型训练。
 
-案例实现所使用的数据即ISBI果蝇电镜图数据集，可以从http://brainiac2.mit.edu/isbi_challenge/中下载，下载好的数据集包括3个tif文件，分别对应测试集样本、训练集标签、训练集样本，文件路径结构如下：
+案例实现所使用的数据即ISBI果蝇电镜图数据集，可以从 http://brainiac2.mit.edu/isbi_challenge/ 中下载，下载好的数据集包括3个tif文件，分别对应测试集样本、训练集标签、训练集样本，文件路径结构如下：
 
 ```
 .datasets/
@@ -87,7 +88,7 @@ c) 结合了下采样时的低分辨率信息（提供物体类别识别依据�
     <div style="color:orange;
     display: inline-block;
     color: #999;
-    padding: 2px;">图2 训练集样本及其对应标签</div>
+    <center> padding: 2px;">图2 训练集样本及其对应标签</div> </center> 
 </center>
 
 #### 2.2 数据集创建
@@ -283,9 +284,9 @@ class UNet(nn.Cell):
 为了能够更加全面和直观的观察网络模型训练效果，本案例实现中还使用了MindSpore框架来自定义Metrics，在自定义的metrics类中使用了多种评价函数来评估模型的好坏，分别为准确率Acc、交并比IoU、Dice系数、灵敏度Sens、特异性Spec。
 
 a) 其中准确率Acc是图像中正确分类的像素百分比。即分类正确的像素占总像素的比例，用公式可表示为：
-$$
-A c c=\frac{T P+T N}{T P+T N+F P+F N}
-$$
+
+$$ Acc=\frac{TP+TN}{TP+TN+FP+FN} $$
+
 其中：
 
 - TP：真阳性数，在label中为阳性，在预测值中也为阳性的个数。
@@ -294,20 +295,25 @@ $$
 - FN：假阴性数，在label中为阳性，在预测值中为阴性的个数。
 
 b) 交并比IoU是预测分割和标签之间的重叠区域除以预测分割和标签之间的联合区域（两者的交集/两者的并集），是语义分割中最常用的指标之一，其计算公式为：
+
 $$
-I o U=\frac{|A \cap B|}{|A \cup B|}=\frac{T P}{T P+F P+F N}
+\text {IoU}=\frac{|A\cap B|}{|A\cup B|}=\frac{TP}{TP+FP+FN}
 $$
-c) Dice系数定义为两倍的交集除以像素和，也叫F1 score，与IoU呈正相关关系，其计算公式为：
+
+c) Dice系数定义为两倍的交集除以像素和，也叫F1score，与IoU呈正相关关系，其计算公式为：
+
 $$
-\text { Dice }=\frac{2|A \cap B|}{|A|+|B|}=\frac{2 T P}{2 T P+F P+F N}
+\text {Dice}=\frac{2|A\cap B|}{|A|+|B|}=\frac{2TP}{2TP+FP+FN}
 $$
+
 d) 敏感度Sens和特异性Spec分别是描述识别出的阳性占所有阳性的比例，以及描述识别出的负例占所有负例的比例，计算公式分别为：
+
 $$
-\text { Sens }=\frac{T P}{T P+F N}
+\text {Sens}=\frac{TP}{TP+FN}
 $$
 
 $$
-\text { Spec }=\frac{T N}{F P+T N}
+\text {Spec}=\frac{TN}{FP+TN}
 $$
 
 具体的实现方法首先是自定义metrics_类，并按照MindSpore官方文档继承nn.Metric父类，接着根据上述5个评价指标的计算公式，在类中定义5个指标的计算方法，之后通过重新实现clear方法来初始化相关参数；重新实现update方法来传入模型预测值和标签，通过上述定义的各评价指标计算方法，计算每个指标的值并存入一个列表；最后通过重新实现eval方法来讲存储各评估指标值的列表返回。上述流程对应的代码如下：
@@ -581,7 +587,7 @@ cbs = [time_cb, loss_cb, eval_cb_train, eval_cb_val]
 
 model.train(epochs, train_dataset, callbacks=cbs)
 ```
-
+表1. 实验结果
 |                | Acc  | IoU  | Dice | Sens | Spec |
 | :------------: | :--: | :--: | :--: | ---: | ---- |
 |   Train set    | 0.90 | 0.88 | 0.94 | 0.94 | 0.76 |
