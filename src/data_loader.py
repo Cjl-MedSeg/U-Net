@@ -1,58 +1,55 @@
 import os
 import cv2
-import numpy as np
 import mindspore.dataset as ds
 import glob
-import albumentations as A
-
+import mindspore.dataset.vision as vision_C
+import mindspore.dataset.transforms as C_transforms
+import random
+import mindspore
+from PIL import Image
+import numpy as np
+from mindspore.dataset.vision import Inter
 
 def train_transforms(img_size):
-    return A.Compose([
-            # A.RandomResizedCrop(img_size, img_size),
-            A.Resize(img_size, img_size),
-            A.Transpose(p=0.5),
-            A.HorizontalFlip(p=0.25),
-            A.VerticalFlip(p=0.25),
-            A.ShiftScaleRotate(p=0.25),
-            A.RandomRotate90(p=0.25),
-            ], p=1.)
+    return C_transforms.Compose([
+    vision_C.Resize(img_size, interpolation=Inter.NEAREST),
+    vision_C.Rescale(1./255., 0.0),
+    vision_C.RandomHorizontalFlip(prob=0.5),
+    vision_C.RandomVerticalFlip(prob=0.5),
+    vision_C.HWC2CHW()
+    ]
+    )
 
 def val_transforms(img_size):
-    return A.Compose([
-            A.Resize(img_size, img_size),
-            ], p=1.)
+    return C_transforms.Compose([
+    vision_C.Resize(img_size, interpolation=Inter.NEAREST),
+    vision_C.Rescale(1/255., 0),
+    vision_C.HWC2CHW()
+    ] )
 
 
 class Data_Loader:
-    def __init__(self, data_path, image_size=None, aug=True):
+    def __init__(self, data_path):
         # 初始化函数，读取所有data_path下的图片
-        self.image_size = image_size
-        self.aug = aug
         self.data_path = data_path
         self.imgs_path = glob.glob(os.path.join(data_path, 'image/*.png'))
         self.label_path = glob.glob(os.path.join(data_path, 'mask/*.png'))
-        self.train_aug = train_transforms(image_size)
-        self.test_aug = val_transforms(image_size)
 
     def __getitem__(self, index):
         # 根据index读取图片
         image = cv2.imread(self.imgs_path[index])
         label = cv2.imread(self.label_path[index], cv2.IMREAD_GRAYSCALE)
 
-        if self.aug:
-            augments = self.train_aug(image=image, mask=label)
-            image, label = augments['image'], augments['mask']
-        else:
-            augments = self.test_aug(image=image, mask=label)
-            image, label = augments['image'], augments['mask']
-
-        image = np.transpose(image, (2, 0, 1))
-        label = np.reshape(label, (1, self.image_size, self.image_size))
-
-        image = image / 255.
-        label = label / 255.
-
-        return image.astype("float32"), label.astype("float32")
+        '''
+        image = Image.open(self.imgs_path[index])
+        label = Image.open(self.label_path[index])
+        label = label.convert('1')
+        image = np.array(image)
+        label = np.array(label)
+        label = label.reshape((label.shape[0], label.shape[1], 1))
+        '''
+        label = label.reshape((label.shape[0], label.shape[1], 1))
+        return image, label
 
     @property
     def column_names(self):
@@ -65,12 +62,28 @@ class Data_Loader:
 
 
 def create_dataset(data_dir, img_size, batch_size, augment, shuffle):
-    mc_dataset = Data_Loader(data_path=data_dir, image_size=img_size, aug=augment)
+    mc_dataset = Data_Loader(data_path=data_dir)
     dataset = ds.GeneratorDataset(mc_dataset, mc_dataset.column_names, shuffle=shuffle)
+
+    if augment:
+        transform_img = train_transforms(img_size)
+    else:
+        transform_img = val_transforms(img_size)
+
+    seed = random.randint(1,1000)
+    mindspore.set_seed(seed)
+    dataset = dataset.map(input_columns='image', num_parallel_workers=1, operations=transform_img)
+    mindspore.set_seed(seed)
+    dataset = dataset.map(input_columns="label", num_parallel_workers=1, operations=transform_img)
+
+    if shuffle:
+        dataset = dataset.shuffle(buffer_size=10000)
+
     dataset = dataset.batch(batch_size, num_parallel_workers=1)
-    if augment==True and shuffle==True:
+
+    if augment == True and shuffle == True:
         print("训练集数据量：", len(mc_dataset))
-    elif augment==False and shuffle==False:
+    elif augment == False and shuffle == False:
         print("验证集数据量：", len(mc_dataset))
     else:
         pass
@@ -78,3 +91,19 @@ def create_dataset(data_dir, img_size, batch_size, augment, shuffle):
     return dataset
 
 
+
+if __name__ == '__main__':
+
+    train_dataset = create_dataset('datasets/ISBI/val', img_size=224, batch_size=3, augment=False, shuffle=False)
+    for item, (image, label) in enumerate(train_dataset):
+        if item < 5:
+            print(label.shape)
+
+        # img = image.asnumpy()[3].transpose(1,2,0)  #.squeeze(0)
+        # cv2.imshow("image", img)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+        # lab = label.asnumpy()[3].transpose(1, 2, 0)  #.squeeze(0)
+        # cv2.imshow("label", lab)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()

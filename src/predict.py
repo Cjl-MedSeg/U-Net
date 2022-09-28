@@ -1,168 +1,101 @@
-import cv2
-from mindspore import Tensor
-from src.UNet_model import UNet
-import mindspore as ms
-import numpy as np
-import matplotlib.pyplot as plt
-from src.data_loader import create_dataset, val_transforms
-import time
-import mindspore.ops as ops
 import os
-import skimage.io as io
-from tqdm import tqdm
-import albumentations as A
-import glob
+import cv2
 import mindspore.dataset as ds
+import glob
+import mindspore.dataset.vision as vision_C
+import mindspore.dataset.transforms as C_transforms
+import random
+import mindspore
+from mindspore.dataset.vision import Inter
+import numpy as np
+from tqdm import tqdm
+from metric import metrics_
+import skimage.io as io
 from skimage import img_as_ubyte
+from UNet_model import UNet
 
-class No_mask_Data_Loader:
-    def __init__(self, data_path, image_size=None, aug=True):
+
+def val_transforms(img_size):
+    return C_transforms.Compose([
+    vision_C.Resize(img_size, interpolation=Inter.NEAREST),
+    vision_C.Rescale(1/255., 0),
+    vision_C.HWC2CHW()
+    ])
+
+class Data_Loader:
+    def __init__(self, data_path, have_mask):
         # 初始化函数，读取所有data_path下的图片
-        self.image_size = image_size
-        self.aug = aug
         self.data_path = data_path
-        self.imgs_path = glob.glob(os.path.join(data_path, '*.png'))
-        self.test_aug = val_transforms(image_size)
+        self.have_mask = have_mask
+        self.imgs_path = glob.glob(os.path.join(data_path, 'image/*.png'))
+        if self.have_mask:
+            self.label_path = glob.glob(os.path.join(data_path, 'mask/*.png'))
 
     def __getitem__(self, index):
         # 根据index读取图片
         image = cv2.imread(self.imgs_path[index])
-
-        augments = self.test_aug(image=image, mask=image)
-        image, label = augments['image'], augments['mask']
-
-        image = np.transpose(image, (2, 0, 1))
-        image = image / 255.
-
-        label = image
-
-        return image.astype("float32"),label.astype("float32")
+        if self.have_mask:
+            label = cv2.imread(self.label_path[index], cv2.IMREAD_GRAYSCALE)
+            label = label.reshape((label.shape[0], label.shape[1], 1))
+        else:
+            label = image
+        return image, label
 
     @property
     def column_names(self):
-        column_names = ['image','label']
+        column_names = ['image', 'label']
         return column_names
 
     def __len__(self):
-        # 返回训练集大小
         return len(self.imgs_path)
 
 
-def caculate_metrics(metrics, preds, gts, smooth=1e-5):
-    pred = np.squeeze(preds.asnumpy())
-    gt = np.squeeze(gts.asnumpy())
+def create_dataset(data_dir, img_size, batch_size, shuffle, have_mask = False):
+    mc_dataset = Data_Loader(data_path=data_dir, have_mask = have_mask)
+    dataset = ds.GeneratorDataset(mc_dataset, mc_dataset.column_names, shuffle=shuffle)
+    transform_img = val_transforms(img_size)
+    seed = random.randint(1, 1000)
+    mindspore.set_seed(seed)
+    dataset = dataset.map(input_columns='image', num_parallel_workers=1, operations=transform_img)
+    mindspore.set_seed(seed)
+    dataset = dataset.map(input_columns="label", num_parallel_workers=1, operations=transform_img)
+    dataset = dataset.batch(batch_size, num_parallel_workers=1)
+    return dataset
 
-    metrics_list = [0. for i in range(len(metrics))]
+def model_pred(model, test_loader, result_path, have_mask):
+    model.set_train(False)
+    test_pred = []
+    test_label = []
+    for batch, (data, label) in enumerate(test_loader.create_tuple_iterator()):
+        pred = model(data)
 
-    def Acc_metrics(y_pred, y):
-        tp = np.sum(y_pred.flatten() == y.flatten())
-        total = len(y_pred.flatten())
-        single_acc = float(tp) / float(total)
-        return single_acc
+        pred[pred > 0.5] = float(1)
+        pred[pred <= 0.5] = float(0)
 
-    def IoU_metrics(y_pred, y):
-        intersection = np.sum(y_pred.flatten() * y.flatten())
-        unionset = np.sum(y_pred.flatten() + y.flatten()) - intersection
-        single_iou = float(intersection) / float(unionset + smooth)
-        return single_iou
-
-    def Dice_metrics(y_pred, y):
-        intersection = np.sum(y_pred.flatten() * y.flatten())
-        unionset = np.sum(y_pred.flatten()) + np.sum(y.flatten())
-        single_dice = 2*float(intersection) / float(unionset + smooth)
-        return single_dice
-
-    def Sens_metrics(y_pred, y):
-        tp = np.sum(y_pred.flatten() * y.flatten())
-        actual_positives = np.sum(y.flatten())
-        single_sens = float(tp) / float(actual_positives + smooth)
-        return single_sens
-
-    def Spec_metrics(y_pred, y):
-        true_neg = np.sum((1 - y.flatten()) * (1 - y_pred.flatten()))
-        total_neg = np.sum((1 - y.flatten()))
-        single_spec = float(true_neg) / float(total_neg + smooth)
-        return single_spec
-
-    if "acc" in metrics:
-        metrics_list[0] = Acc_metrics(pred, gt)
-
-    if "iou" in metrics:
-        metrics_list[1] = IoU_metrics(pred, gt)
-
-    if "dice" in metrics:
-        metrics_list[2] = Dice_metrics(pred, gt)
-
-    if "sens" in metrics:
-        metrics_list[3] = Sens_metrics(pred, gt)
-
-    if "spec" in metrics:
-        metrics_list[4] = Spec_metrics(pred, gt)
-
-    return metrics_list
-
-
-def model_pred(model, test_loader, result_path, Have_Mask):
-
-    mtr = ['acc', 'iou', 'dice', 'sens', 'spec']
-    metrics_list = [0. for i in range(len(mtr))]
-    samples_num = 0
-
-    for i, (image,  label) in enumerate(tqdm(test_loader)):
-        samples_num += 1
-
-        preds = model(image)
-
-        if preds.min() < 0:
-            preds = ops.Sigmoid()(preds)
-
-        preds[preds > 0.5] = float(1)
-        preds[preds <= 0.5] = float(0)
-
-        if Have_Mask:
-            for item in range(len(mtr)):
-                metrics_list[item] += caculate_metrics(mtr, preds, label)[item]
-
-        preds = np.squeeze(preds,axis=0)
-
-        img = np.transpose(preds,(1,2,0))
+        preds = np.squeeze(pred, axis=0)
+        img = np.transpose(preds,(1, 2, 0))
 
         if not os.path.exists(result_path):
             os.makedirs(result_path)
+        io.imsave(os.path.join(result_path, "%05d.png" % batch), img.asnumpy())
 
-        io.imsave(os.path.join(result_path, "%05d.png" % i), img_as_ubyte(img.asnumpy()))
+        test_pred.extend(pred.asnumpy())
+        test_label.extend(label.asnumpy())
 
-
-    if Have_Mask:
-        print('%s:丨acc: %.4f丨丨iou: %.4f丨丨dice: %.4f丨丨sens: %.4f丨丨spec: %.4f丨' %
-              ("Test", metrics_list[0]/samples_num, metrics_list[1]/samples_num, metrics_list[2]/samples_num, metrics_list[3]/samples_num, metrics_list[4]/samples_num))
-
+    if have_mask:
+        mtr = ['acc', 'iou', 'dice', 'sens', 'spec']
+        metric = metrics_(mtr, smooth=1e-5)
+        metric.clear()
+        metric.update(test_pred, test_label)
+        res = metric.eval()
+        print(f'丨acc: %.3f丨丨iou: %.3f丨丨dice: %.3f丨丨sens: %.3f丨丨spec: %.3f丨' % (res[0], res[1], res[2], res[3], res[4]))
     else:
         print("Evaluation metrics cannot be calculated without Mask")
 
-
-def load_test_data(data_dir, img_size, batch_size, augment, shuffle, Have_Mask = False):
-    if Have_Mask:
-        test_dataset = create_dataset(data_dir, img_size=img_size, batch_size=batch_size, augment=augment, shuffle=shuffle)
-    else:
-        mc_dataset = No_mask_Data_Loader(data_path=data_dir, image_size=img_size, aug=augment)
-        print("数据个数：", len(mc_dataset))
-        test_dataset = ds.GeneratorDataset(mc_dataset, mc_dataset.column_names, shuffle=shuffle)
-        test_dataset = test_dataset.batch(batch_size, num_parallel_workers=1)
-
-    return test_dataset
-
-
-Have_Mask = False
-
-net = UNet()
-
-ms.load_checkpoint("checkpoint/best.ckpt", net=net)
-
-result_path = "predict"
-
-test_dataset = load_test_data("datasets/ISBI/test_imgs/", 224, 1, augment = False, shuffle = False, Have_Mask = Have_Mask)
-
-model_pred(net, test_dataset, result_path, Have_Mask)
-
+if __name__ == '__main__':
+    net = UNet(3, 1)
+    mindspore.load_checkpoint("checkpoint/best_UNet.ckpt", net=net)
+    result_path = "predict"
+    test_dataset = create_dataset("datasets/ISBI/val/", 224, 1, shuffle=False, have_mask=True)
+    model_pred(net, test_dataset, result_path, have_mask=True)
 

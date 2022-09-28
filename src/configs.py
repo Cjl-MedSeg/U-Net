@@ -4,7 +4,7 @@ def get_config():
 
     config = ml_collections.ConfigDict()
 
-    config.epochs = 50
+    config.epochs = 10
 
     config.train_data_path = "./datasets/ISBI/train/"
 

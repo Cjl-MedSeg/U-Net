@@ -1,26 +1,8 @@
 import numpy as np
 from mindspore._checkparam import Validator as validator
-from mindspore.nn.metrics import *
-from mindspore import Tensor
 from mindspore.nn import Metric
 
-
-def _convert_data(data):
-
-    if isinstance(data, Tensor):
-        data = data.asnumpy()
-    elif isinstance(data, list):
-        data = np.array(data)
-    elif isinstance(data, np.ndarray):
-        pass
-    else:
-        raise TypeError(f"For 'Metric' and its derived classes, the input data type must be tensor, list or "
-                        f"numpy.ndarray, but got {type(data)}.")
-    return data
-
-
 class metrics_(Metric):
-
     def __init__(self, metrics, smooth=1e-5):
         super(metrics_, self).__init__()
         self.metrics = metrics
@@ -67,12 +49,14 @@ class metrics_(Metric):
     def update(self, *inputs):
 
         if len(inputs) != 2:
-            raise ValueError("For 'update', it needs 2 inputs (predicted value, true value), "
-                             "but got {}.".format(len(inputs)))
+            raise ValueError("For 'update', it needs 2 inputs (predicted value, true value), ""but got {}.".format(len(inputs)))
 
-        y_pred = np.round(_convert_data(inputs[0]))
 
-        y = _convert_data(inputs[1])
+        y_pred = np.array(inputs[0])
+        y_pred[y_pred > 0.5] = float(1)
+        y_pred[y_pred <= 0.5] = float(0)
+
+        y = np.array(inputs[1])
 
         self._samples_num += y.shape[0]
 
@@ -82,7 +66,6 @@ class metrics_(Metric):
                              f"true value shape: {y.shape}.")
 
         for i in range(y.shape[0]):
-
             if "acc" in self.metrics:
                 single_acc = self.Acc_metrics(y_pred[i], y[i])
                 self.metrics_list[0] += single_acc
@@ -100,7 +83,6 @@ class metrics_(Metric):
                 self.metrics_list[4] += single_spec
 
     def eval(self):
-
         if self._samples_num == 0:
             raise RuntimeError("The 'metrics' can not be calculated, because the number of samples is 0, "
                                "please check whether your inputs(predicted value, true value) are empty, or has "
