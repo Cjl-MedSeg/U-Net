@@ -5,7 +5,7 @@ Implementing U-Net under Mindspore framework
 ### BibTex
 
 '''bibtex
-@misc{$UNet,
+@misc{UNet,
 author = {Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
 year = {2015},
 month = {05},
